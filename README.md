@@ -13,7 +13,7 @@ For future me on how to use:
 `./GBF/` - Folder for all card images
 `GBF-text.csv` - `CardNumber`, `Climax`, and `Text` are the collumns
 ```
-python3 ws_editor.py  ./GBF/ ./GBF-text.csv ./ws-card-back.png <cardsheet_file_name>
+python3 ws_editor.py  ./GBF/ ./GBF-text.csv ./ws-card-back.png
 ```
 
 ### Requirements..
