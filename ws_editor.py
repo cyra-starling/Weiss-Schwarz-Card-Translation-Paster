@@ -12,7 +12,8 @@ climaxCharLimit = 80
 fontSize = 16
 wrapGap = 3
 lineGap = 10
-outputPath = "./output/"
+outputPath = "./cards/"
+outputCXPath = "./climaxCards/"
 sheetOutputPath = "./cardsheets/"
 wsCardWidth = 460
 wsCardHeight = 641
@@ -20,12 +21,49 @@ wsCardHeight = 641
 font = ImageFont.truetype("./SpaceMonoRegular-JRrmm.ttf")
 
 # Expected Input
-# <path to image folders> <path to csv file> <path to card backing> <card sheets name>
+# <path to image folders> <path to csv file> <path to card backing>
 # CSV format: [CardNumber] [Climax] [Text]
+
+def generate_card_sheets(inputImages, outPath, outputName):
+    numberOfSheets = 0
+    if (len(inputImages) % 69) > 0:
+        numberOfSheets = ceil(len(inputImages) / 69)
+    else:
+        numberOfSheets = int(len(inputImages) / 69)
+
+    if numberOfSheets > 0:
+        card = 0
+        for sheet in range(numberOfSheets):
+            cardsheet = Image.new('RGBA', (10*wsCardWidth, 7*wsCardHeight))
+            row = 0
+            for i in range(70):
+                if card >= len(inputImages):
+                    break
+
+                cardToPaste = Image.open(inputImages[card])
+
+                # rotate CX cards first
+                if cardToPaste.width > cardToPaste.height:
+                    cardToPaste = cardToPaste.transpose(method=Image.Transpose.ROTATE_270)
+
+                if (i > 0) and (i % 10 == 0):
+                    row += 1
+
+                cardsheet.paste(cardToPaste, ((card % 10)*wsCardWidth, row*wsCardHeight))
+
+                card += 1
+
+            cardsheet.paste(Image.open(cardBackPath), (9*wsCardWidth, 6*wsCardHeight))
+
+            print(outPath+outputName+str(sheet)+".png")
+            cardsheet.save(outPath+outputName+str(sheet)+".png", optimize=True)
+
 
 # ----- Prep output folder
 if not os.path.exists(outputPath):
     os.mkdir(outputPath)
+if not os.path.exists(outputCXPath):
+    os.mkdir(outputCXPath)
 if not os.path.exists(sheetOutputPath):
     os.mkdir(sheetOutputPath)
 
@@ -98,9 +136,11 @@ for cardIndex in range(len(imagePaths)):
             count+=1
         lineCount+=1
 
-    print("Saving card #"+str(cardIndex))
-    image.save(outputPath+imageNames[cardIndex], optimize=True)
-    outputImagePaths.append(outputPath+imageNames[cardIndex])
+    
+    if climax == "Y":
+        image.save(outputCXPath+imageNames[cardIndex], optimize=True)
+    else:
+        image.save(outputPath+imageNames[cardIndex], optimize=True)
 
 
 # ----- Get card backing path
@@ -109,46 +149,20 @@ if not os.path.exists(cardBackPath):
     print("Card backing path doesnt exists")
     sys.exit()
 
-# ----- Get card sheet name
-cardSheetName = sys.argv[4]
-if not cardSheetName:
-    cardSheetName = "WS_CARDSHEET_"
-
 # ----- Start making card sheets
-# 1 sheet has 69 cards max, 70th card is card back image
-numberOfSheets = 0
-if (len(outputImagePaths) % 69) > 0:
-    numberOfSheets = ceil(len(outputImagePaths) / 69)
-else:
-    numberOfSheets = len(outputImagePaths) / 69
+cxImageNames = os.listdir(outputCXPath)
+outputImageNames = os.listdir(outputPath)
+cxImagePaths = []
+outputImagePaths = []
 
-print(len(outputImagePaths))
+for file in cxImageNames:
+    if ".png" in file:
+        cxImagePaths.append(os.path.join(outputCXPath, file))
 
-if numberOfSheets > 0:
-    for sheet in range(numberOfSheets):
-        cardsheet = Image.new('RGBA', (10*wsCardWidth, 7*wsCardHeight))
-        print(cardsheet.height)
-        cardInSheet = 0
-        row = 0
-        for card in range(len(outputImagePaths)):
-        # for card in range(2):
-            cardInSheet += 1
-            cardToPaste = Image.open(outputImagePaths[card])
-            
-            if cardToPaste.width > cardToPaste.height:
-                # means its CX cards (Landscape cards), rotate first
-                cardToPaste = cardToPaste.transpose(method=Image.Transpose.ROTATE_270)
+generate_card_sheets(cxImagePaths, sheetOutputPath, "WS_CARDSHEET_CX_")
 
-            cardsheet.paste(cardToPaste, ((card % 10)*wsCardWidth, row*wsCardHeight))
-            if cardInSheet % 10 == 0:
-                row += 1
+for file in outputImageNames:
+    if ".png" in file:
+        outputImagePaths.append(os.path.join(outputPath, file))
 
-            if cardInSheet == 69:
-                cardsheet.paste(Image.open(cardBackPath), (9*wsCardWidth, 6*wsCardHeight))
-                break
-
-        if cardInSheet < 69:
-                cardsheet.paste(Image.open(cardBackPath), (9*wsCardWidth, 6*wsCardHeight))
-
-        print(sheetOutputPath+cardSheetName+str(sheet)+".png")
-        cardsheet.save(sheetOutputPath+cardSheetName+str(sheet)+".png", optimize=True)
+generate_card_sheets(outputImagePaths, sheetOutputPath, "WS_CARDSHEET_")
